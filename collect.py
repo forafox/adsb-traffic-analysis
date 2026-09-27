@@ -12,10 +12,14 @@
 Ответы не парсятся и не переписываются: в хранилище ЛР1 они пойдут сырыми.
 
 Запуск:
-    python3 collect.py                      снимок по умолчанию (Кейптаун, OpenSky + adsb.lol)
-    python3 collect.py --sources opensky    только один источник
-    python3 collect.py --regions cpt,za     Кейптаун и вся ЮАР
-    python3 collect.py --dry-run            показать, что будет собрано, без записи
+    python3 collect.py                          один снимок
+    python3 collect.py --repeat 12              серия из 12 снимков с паузой 5 минут
+    python3 collect.py --repeat 12 --interval 120   та же серия, но раз в 2 минуты
+    python3 collect.py --regions cpt            только Кейптаун, без остальной ЮАР
+    python3 collect.py --sources opensky        только один источник
+    python3 collect.py --dry-run                показать, что будет собрано, без записи
+
+Серия прерывается по Ctrl+C, уже сохранённые снимки при этом остаются.
 
 Зависимостей нет, нужен только Python 3.9+.
 """
@@ -38,8 +42,9 @@ REGIONS = {
     "cpt": (-34.5, 17.9, -33.4, 19.3),   # Кейптаун и аэропорт CPT, ~120x130 км
     "za": (-35.0, 16.0, -22.0, 33.0),    # вся ЮАР, для оценки объёма данных
 }
-DEFAULT_REGIONS = "cpt"
-DEFAULT_SOURCES = "opensky,adsblol"
+DEFAULT_REGIONS = "cpt,za"
+DEFAULT_SOURCES = "opensky,adsblol,adsbfi"
+DEFAULT_INTERVAL = 300
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RAW_DIR = os.path.join(ROOT, "data", "raw")
@@ -108,7 +113,7 @@ def fetch(url):
 def collect(regions, sources, dry_run=False):
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = os.path.join(RAW_DIR, run_id)
-    print(f"Снимок {run_id}")
+    print(f"Снимок {run_id}" + (" (пробный прогон)" if dry_run else ""))
 
     entries = []
     failed = 0
@@ -155,9 +160,26 @@ def collect(regions, sources, dry_run=False):
     with open(os.path.join(run_dir, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
 
-    print(f"Сохранено в data/raw/{run_id}")
+    print(f"Сохранено в data/raw/{run_id}, файлов: {len(entries) - failed}")
+    return failed
+
+
+def collect_series(regions, sources, repeat, interval, dry_run=False):
+    if dry_run:
+        collect(regions, sources, dry_run=True)
+        print(f"Серия: {repeat} снимков с паузой {interval} с")
+        return 0
+    failed = 0
+    try:
+        for i in range(repeat):
+            print(f"[{i + 1}/{repeat}] ", end="")
+            failed += collect(regions, sources)
+            if i + 1 < repeat:
+                time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\nОстановлено, собранные снимки сохранены.")
     if failed:
-        print(f"Источников с ошибкой: {failed}. Повторите запуск через несколько минут.")
+        print(f"Запросов с ошибкой: {failed}. Если их много, проверьте лимиты источников.")
     return 1 if failed else 0
 
 
@@ -168,6 +190,10 @@ def main():
                    help=f"регионы через запятую из: {', '.join(REGIONS)} (по умолчанию {DEFAULT_REGIONS})")
     p.add_argument("--sources", default=DEFAULT_SOURCES,
                    help=f"источники через запятую из: {', '.join(SOURCES)} (по умолчанию {DEFAULT_SOURCES})")
+    p.add_argument("--repeat", type=int, default=1, metavar="N",
+                   help="сколько снимков сделать за запуск (по умолчанию 1)")
+    p.add_argument("--interval", type=int, default=DEFAULT_INTERVAL, metavar="СЕК",
+                   help=f"пауза между снимками в серии (по умолчанию {DEFAULT_INTERVAL})")
     p.add_argument("--dry-run", action="store_true", help="показать запросы и выйти")
     args = p.parse_args()
 
@@ -177,7 +203,9 @@ def main():
         unknown = [x for x in chosen if x not in known]
         if unknown:
             p.error(f"неизвестные {name}: {', '.join(unknown)}; доступны: {', '.join(known)}")
-    sys.exit(collect(regions, sources, args.dry_run))
+    if args.repeat < 1:
+        p.error("--repeat должен быть не меньше 1")
+    sys.exit(collect_series(regions, sources, args.repeat, args.interval, args.dry_run))
 
 
 if __name__ == "__main__":
