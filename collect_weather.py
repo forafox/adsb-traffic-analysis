@@ -56,7 +56,7 @@ def collect(airports, hours, dry_run=False):
     print(f"Погода {run_id}: {', '.join(airports)}, последние {hours} ч")
     if dry_run:
         print(f"  GET {url}")
-        return 0
+        return None, 0
 
     try:
         req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
@@ -65,10 +65,10 @@ def collect(airports, hours, dry_run=False):
         observations = json.loads(body)
     except urllib.error.HTTPError as e:
         print(f"  ошибка: HTTP {e.code}")
-        return 1
+        return None, 1
     except Exception as e:
         print(f"  ошибка: {type(e).__name__}: {e}"[:200])
-        return 1
+        return None, 1
 
     by_airport = {}
     for o in observations:
@@ -85,7 +85,7 @@ def collect(airports, hours, dry_run=False):
     print("  " + ", ".join(f"{a}: {n}" for a, n in sorted(by_airport.items())))
     print(f"Сохранено в data/raw/weather/{os.path.basename(path)}, "
           f"наблюдений: {len(observations)}")
-    return 0
+    return path, 0
 
 
 def main():
@@ -102,7 +102,7 @@ def main():
         p.error("нужен хотя бы один код аэропорта")
     if not 1 <= args.hours <= 96:
         p.error("--hours должен быть от 1 до 96")
-    sys.exit(collect(airports, args.hours, args.dry_run))
+    sys.exit(1 if collect(airports, args.hours, args.dry_run)[1] else 0)
 
 
 if __name__ == "__main__":

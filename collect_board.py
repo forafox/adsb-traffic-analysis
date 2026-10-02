@@ -144,7 +144,7 @@ def collect(date, dry_run=False):
         print(f"  POST {BOARD_URL}")
         print(f"  вылеты: hdnFromAirport={AIRPORT}, прилёты: hdnToAirport={AIRPORT}, "
               f"даты {date}, время 00:00-23:59")
-        return 0
+        return None, 0
 
     opener = make_opener()
     entries, flights, failed = [], [], 0
@@ -189,7 +189,7 @@ def collect(date, dry_run=False):
 
     if not flights and failed:
         print("Ничего не собрано.")
-        return 1
+        return None, 1
 
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"{run_id}_cpt.json")
@@ -198,7 +198,7 @@ def collect(date, dry_run=False):
                    "source": "acsa", "url": BOARD_URL,
                    "requests": entries, "flights": flights}, f, ensure_ascii=False, indent=2)
     print(f"Сохранено в data/raw/board/{os.path.basename(path)}, рейсов: {len(flights)}")
-    return 1 if failed else 0
+    return path, failed
 
 
 def main():
@@ -210,7 +210,7 @@ def main():
     args = p.parse_args()
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.date):
         p.error("дата должна быть в формате ГГГГ-ММ-ДД")
-    sys.exit(collect(args.date, args.dry_run))
+    sys.exit(1 if collect(args.date, args.dry_run)[1] else 0)
 
 
 if __name__ == "__main__":

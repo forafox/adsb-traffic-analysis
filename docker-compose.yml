@@ -15,6 +15,11 @@ x-airflow-common: &airflow-common
     ODS_CLICKHOUSE_HOST: clickhouse
     ODS_MONGO_URI: mongodb://ods:ods@mongo:27017
     PROJECT_DIR: /opt/project
+    # расписание выключено: DAGи запускаются вручную. Чтобы включить, раскомментируйте
+    # нужную строку и перезапустите: docker compose up -d
+    # POSITIONS_SCHEDULE: "*/15 * * * *"
+    # BOARD_SCHEDULE: "0 * * * *"
+    # WEATHER_SCHEDULE: "30 * * * *"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs

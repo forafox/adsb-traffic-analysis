@@ -153,7 +153,7 @@ def collect(regions, sources, dry_run=False):
             time.sleep(1)  # adsb.fi просит не чаще одного запроса в секунду
 
     if dry_run:
-        return 0
+        return run_id, 0
 
     os.makedirs(run_dir, exist_ok=True)
     manifest = {"run_id": run_id, "regions": regions, "sources": sources, "entries": entries}
@@ -161,7 +161,7 @@ def collect(regions, sources, dry_run=False):
         json.dump(manifest, f, ensure_ascii=False, indent=2)
 
     print(f"Сохранено в data/raw/{run_id}, файлов: {len(entries) - failed}")
-    return failed
+    return run_id, failed
 
 
 def collect_series(regions, sources, repeat, interval, dry_run=False):
@@ -173,7 +173,7 @@ def collect_series(regions, sources, repeat, interval, dry_run=False):
     try:
         for i in range(repeat):
             print(f"[{i + 1}/{repeat}] ", end="")
-            failed += collect(regions, sources)
+            failed += collect(regions, sources)[1]
             if i + 1 < repeat:
                 time.sleep(interval)
     except KeyboardInterrupt:
