@@ -89,6 +89,25 @@ services:
       interval: 10s
       retries: 5
 
+  adminer:
+    image: adminer:5
+    ports:
+      - "8081:8080"
+    depends_on:
+      ods-postgres:
+        condition: service_healthy
+
+  mongo-express:
+    image: mongo-express:1.0.2
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://ods:ods@mongo:27017
+      ME_CONFIG_BASICAUTH: 'false'
+    ports:
+      - "8082:8081"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
   airflow-init:
     <<: *airflow-common
     command: version

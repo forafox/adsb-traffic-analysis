@@ -29,6 +29,8 @@ data/raw ────► DAG ods_archive (разовая загрузка соб
 | ods-postgres | postgres:16 | 5433 | ODS, реляционное хранилище |
 | clickhouse | clickhouse/clickhouse-server:26.8 | 8123 | ODS, колонковое хранилище |
 | mongo | mongo:8 | 27017 | ODS, документное хранилище |
+| adminer | adminer:5 | 8081 | веб-интерфейс к PostgreSQL |
+| mongo-express | mongo-express:1.0.2 | 8082 | веб-интерфейс к MongoDB |
 
 Исполнитель — LocalExecutor. Celery, Redis и отдельные воркеры не разворачивались: для
 четырёх DAGов на одной машине они только добавляют контейнеры.
@@ -151,7 +153,64 @@ MongoDB по итогам замеров не даёт преимуществ н
 Абсолютные числа зависят от машины, но соотношение между хранилищами устойчиво
 и воспроизводится между прогонами.
 
-## 5. Как воспроизвести
+## 5. Демонстрация
+
+### Веб-интерфейс Airflow
+
+Четыре DAGа, все запуски успешные:
+
+![Список DAGов](report/airflow-dags.jpg)
+
+Запуск `ods_positions`: задача `extract` и три задачи `load`, по одной на хранилище
+(динамический маппинг, индексы 0, 1, 2):
+
+![Запуск DAGа](report/airflow-run.jpg)
+
+### Данные в хранилищах
+
+MongoDB, коллекция `ods_flights`, 3437 документов. Видно расписание и фактическое время:
+рейс FA106 FlySafair по расписанию в 05:45, фактически в 05:57.
+
+![Данные в MongoDB](report/mongo-express.jpg)
+
+PostgreSQL, позиции по источникам:
+
+```
+$ docker compose exec ods-postgres psql -U ods -d ods \
+    -c "select source, count(*) as rows, round(avg(alt_m)) as avg_alt from ods_positions group by source order by rows desc"
+
+ source  | rows | avg_alt
+---------+------+---------
+ opensky | 1592 |    4944
+ adsbfi  | 1047 |    6769
+ adsblol |  988 |    6715
+```
+
+ClickHouse, рейсы по дням и направлениям:
+
+```
+$ docker compose exec clickhouse clickhouse-client -u ods --password ods -d ods \
+    -q "select flight_date, direction, count() as flights from ods_flights group by flight_date, direction order by flight_date limit 6"
+
+┌─flight_date─┬─direction──┬─flights─┐
+│ 2026-09-27  │ departures │    1035 │
+│ 2026-09-27  │ arrivals   │     800 │
+│ 2026-09-28  │ departures │     197 │
+│ 2026-09-28  │ arrivals   │     199 │
+│ 2026-09-29  │ arrivals   │     193 │
+│ 2026-09-29  │ departures │     192 │
+└─────────────┴────────────┴─────────┘
+```
+
+Разница в числах за 27 сентября объясняется тем, что в этот день табло снималось
+несколько раз подряд при отладке, и каждый снимок попал в ODS со своим `run_id`.
+
+Для показа данных в браузере в compose добавлены два лёгких интерфейса: Adminer
+для PostgreSQL (http://localhost:8081, сервер `ods-postgres`, пользователь и пароль `ods`)
+и mongo-express для MongoDB (http://localhost:8082). У ClickHouse свой интерфейс
+по адресу http://localhost:8123/play.
+
+## 6. Как воспроизвести
 
 ```bash
 docker compose up -d                     # поднять Airflow и три хранилища

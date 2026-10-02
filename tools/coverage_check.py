@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Проверка покрытия ADS-B над выбранными регионами (по умолчанию Кейптаун + контрольный Хельсинки/Таллин).
+"""Проверка покрытия ADS-B по регионам ЮАР (по умолчанию Кейптаун и Йоханнесбург).
 
 Периодически опрашивает OpenSky Network, adsb.lol и adsb.fi, пишет:
   coverage_data/coverage.csv  — одна строка на (опрос, регион, источник): сколько бортов видно
@@ -11,7 +11,7 @@
   python3 coverage_check.py                 # опрос каждые 10 минут, Ctrl+C для остановки
   python3 coverage_check.py --once          # один опрос и выход
   python3 coverage_check.py --interval 300  # свой интервал в секундах
-  python3 coverage_check.py --regions cpt,jnb,hel_tll   # другие регионы (список в REGIONS)
+  python3 coverage_check.py --regions cpt,za   # другие регионы (список в REGIONS)
   python3 coverage_check.py --report        # сводка по накопленным данным
 
 Лимит OpenSky без регистрации — 400 запросов в сутки: при интервале 10 минут это
@@ -44,11 +44,9 @@ FRESH_SEC = 60  # позиция старше этого считается «у
 REGIONS = {
     "cpt": (-34.5, 17.9, -33.4, 19.3),     # Кейптаун (CPT), ~120x130 км
     "jnb": (-26.7, 27.6, -25.6, 28.9),     # Йоханнесбург (JNB) + Претория
-    "hel_tll": (59.0, 23.5, 60.6, 26.0),   # Хельсинки (HEL) + Таллин (TLL), заведомо хорошее покрытие
-    "spb": (59.3, 28.8, 60.4, 31.6),       # Петербург + Пулково (LED) — покрытия почти нет
-    "msk": (55.2, 36.6, 56.3, 38.7),       # Москва (SVO, DME, VKO) — покрытия почти нет
+    "za": (-35.0, 16.0, -22.0, 33.0),      # вся ЮАР
 }
-DEFAULT_REGIONS = "cpt,hel_tll"
+DEFAULT_REGIONS = "cpt,jnb"
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        "data", "coverage")
