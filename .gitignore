@@ -20,3 +20,6 @@ env/
 # Логи и временные файлы
 *.log
 tmp/
+
+# Airflow
+logs/
