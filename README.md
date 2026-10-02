@@ -42,6 +42,11 @@ collect_board.py        табло аэропорта Кейптауна: рас
 collect_weather.py      сводки METAR по аэропортам ЮАР
 summary.py              что уже собрано: таблица по запускам и итоги
 tools/coverage_check.py сколько бортов видно по регионам и часам, по каждому источнику
+dags/                   ETL-процессы Airflow, загрузка сырых данных в ODS (ЛР1)
+docker-compose.yml      Airflow и три хранилища
+tools/compare_storages.py, tools/compare_charts.py  замеры хранилищ и графики к ним
+tools/analysis_charts.py  первичный анализ рейсов: загрузка по часам и задержки
+report/                 графики и скриншоты для отчёта
 data/                   собранные данные, в репозиторий не попадают (см. .gitignore)
 ```
 
