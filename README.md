@@ -42,7 +42,8 @@ collect_board.py        табло аэропорта Кейптауна: рас
 collect_weather.py      сводки METAR по аэропортам ЮАР
 summary.py              что уже собрано: таблица по запускам и итоги
 tools/coverage_check.py сколько бортов видно по регионам и часам, по каждому источнику
-dags/                   ETL-процессы Airflow, загрузка сырых данных в ODS (ЛР1)
+dags/                   ETL-процессы Airflow: ODS (ЛР1), DDS и проверки качества (ЛР2)
+sql/dds/                SQL слоя DDS: схема, измерения, факты (ЛР2)
 docker-compose.yml      Airflow и три хранилища
 tools/compare_storages.py, tools/compare_charts.py  замеры хранилищ и графики к ним
 tools/analysis_charts.py  первичный анализ рейсов: загрузка по часам и задержки
@@ -155,6 +156,9 @@ data/raw/
 
 **ЛР1. Airflow и ETL.** Выполнена, см. [REPORT.md](REPORT.md): `docker compose up -d`
 поднимает Airflow и три хранилища, DAGи в `dags/` грузят сырые данные в ODS.
+
+**ЛР2. Нормализация и Data Quality.** Слой DDS в ClickHouse (созвездие фактов, SCD2 для
+самолётов), DAGи `dds_*` и `dds_quality`, SQL в `sql/dds/`, см. [REPORT_LR2.md](REPORT_LR2.md).
 
 Исходный план:
 

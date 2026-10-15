@@ -8,6 +8,7 @@ from airflow.sdk import dag, task
 
 sys.path.insert(0, os.environ.get("PROJECT_DIR", "/opt/project"))
 
+import datasets
 import ods
 
 AIRPORTS = ["FACT", "FAOR", "FALE", "FAPE"]
@@ -30,7 +31,11 @@ def ods_weather():
     def load(storage: str, path: str) -> int:
         return ods.load("metar", storage, ods.read_metar(path))
 
-    load.partial(path=extract()).expand(storage=list(ods.LOADERS))
+    @task(outlets=[datasets.ODS_METAR])
+    def publish(loaded):
+        print(f"Загрузка в ODS завершена: {list(loaded)}")
+
+    publish(load.partial(path=extract()).expand(storage=list(ods.LOADERS)))
 
 
 ods_weather()

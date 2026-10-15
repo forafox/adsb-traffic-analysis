@@ -8,6 +8,7 @@ from airflow.sdk import dag, task
 
 sys.path.insert(0, os.environ.get("PROJECT_DIR", "/opt/project"))
 
+import datasets
 import ods
 
 REGIONS = ["cpt", "za"]
@@ -30,7 +31,11 @@ def ods_positions():
     def load(storage: str, snapshot: str) -> int:
         return ods.load("positions", storage, ods.read_positions(snapshot))
 
-    load.partial(snapshot=extract()).expand(storage=list(ods.LOADERS))
+    @task(outlets=[datasets.ODS_POSITIONS])
+    def publish(loaded):
+        print(f"Загрузка в ODS завершена: {list(loaded)}")
+
+    publish(load.partial(snapshot=extract()).expand(storage=list(ods.LOADERS)))
 
 
 ods_positions()
