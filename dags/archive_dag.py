@@ -9,6 +9,7 @@ from airflow.sdk import dag, task
 
 sys.path.insert(0, os.environ.get("PROJECT_DIR", "/opt/project"))
 
+import datasets
 import ods
 
 
@@ -19,20 +20,20 @@ def load_everywhere(dataset, rows):
 @dag(dag_id="ods_archive", schedule=None, start_date=datetime(2026, 9, 27),
      catchup=False, tags=["ods", "backfill"])
 def ods_archive():
-    @task
+    @task(outlets=[datasets.ODS_POSITIONS])
     def positions() -> int:
         run_ids = sorted(os.path.basename(os.path.dirname(p))
                          for p in glob.glob(os.path.join(ods.RAW_DIR, "*", "manifest.json")))
         print(f"Снимков позиций: {len(run_ids)}")
         return sum(load_everywhere("positions", ods.read_positions(r)) for r in run_ids)
 
-    @task
+    @task(outlets=[datasets.ODS_FLIGHTS])
     def flights() -> int:
         paths = sorted(glob.glob(os.path.join(ods.RAW_DIR, "board", "*.json")))
         print(f"Снимков табло: {len(paths)}")
         return sum(load_everywhere("flights", ods.read_flights(p)) for p in paths)
 
-    @task
+    @task(outlets=[datasets.ODS_METAR])
     def metar() -> int:
         paths = sorted(glob.glob(os.path.join(ods.RAW_DIR, "weather", "*.json")))
         print(f"Снимков погоды: {len(paths)}")

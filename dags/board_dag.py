@@ -8,6 +8,7 @@ from airflow.sdk import dag, task
 
 sys.path.insert(0, os.environ.get("PROJECT_DIR", "/opt/project"))
 
+import datasets
 import ods
 
 
@@ -29,7 +30,11 @@ def ods_board():
     def load(storage: str, path: str) -> int:
         return ods.load("flights", storage, ods.read_flights(path))
 
-    load.partial(path=extract()).expand(storage=list(ods.LOADERS))
+    @task(outlets=[datasets.ODS_FLIGHTS])
+    def publish(loaded):
+        print(f"Загрузка в ODS завершена: {list(loaded)}")
+
+    publish(load.partial(path=extract()).expand(storage=list(ods.LOADERS)))
 
 
 ods_board()
