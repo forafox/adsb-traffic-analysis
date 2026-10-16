@@ -47,6 +47,7 @@ sql/dds/                SQL слоя DDS: схема, измерения, фак
 docker-compose.yml      Airflow и три хранилища
 tools/compare_storages.py, tools/compare_charts.py  замеры хранилищ и графики к ним
 tools/analysis_charts.py  первичный анализ рейсов: загрузка по часам и задержки
+tools/scd2_demo.py      проверка механизма SCD2 на синтетическом борте
 report/                 графики и скриншоты для отчёта
 data/                   собранные данные, в репозиторий не попадают (см. .gitignore)
 ```
@@ -157,8 +158,9 @@ data/raw/
 **ЛР1. Airflow и ETL.** Выполнена, см. [REPORT.md](REPORT.md): `docker compose up -d`
 поднимает Airflow и три хранилища, DAGи в `dags/` грузят сырые данные в ODS.
 
-**ЛР2. Нормализация и Data Quality.** Слой DDS в ClickHouse (созвездие фактов, SCD2 для
-самолётов), DAGи `dds_*` и `dds_quality`, SQL в `sql/dds/`, см. [REPORT_LR2.md](REPORT_LR2.md).
+**ЛР2. Нормализация и Data Quality.** Выполнена, см. [REPORT_LR2.md](REPORT_LR2.md):
+слой DDS в ClickHouse (созвездие фактов, SCD2 для самолётов), DAGи `dds_*` и `dds_quality`,
+SQL в `sql/dds/`. DAGи DDS стартуют сами, когда DAGи ODS обновили свои assets.
 
 Исходный план:
 
