@@ -68,6 +68,10 @@ CHECKS = {
         Check("delay_out_of_range",
               "select count() from dds_fact_flight final where abs(delay_min) > 240",
               "<=", 0, "error"),
+        # неполный сбор: у дня должны быть и вылеты, и прилёты
+        Check("both_directions_per_day",
+              "select count() from (select flight_date from dds_fact_flight final "
+              "group by flight_date having uniqExact(direction) < 2)", "<=", 0, "error"),
         Check("unknown_airline_share",
               "select if(count() = 0, 0, countIf(airline_key = 0) / count()) "
               "from dds_fact_flight final", "<=", 0.05, "warn"),

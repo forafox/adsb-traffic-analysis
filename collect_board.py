@@ -21,11 +21,9 @@
 
 import argparse
 import html
-import http.cookiejar
 import json
 import os
 import re
-import ssl
 import sys
 import time
 import urllib.error
@@ -33,40 +31,20 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+import web
+
 SAST = timezone(timedelta(hours=2))
 BOARD_URL = ("https://www.airports.co.za/airports/cape-town-international-airport"
              "/the-airport/flight-information")
 AIRPORT = "Cape Town"
-USER_AGENT = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-              "(KHTML, like Gecko) Chrome/141.0 Safari/537.36")
 TIMEOUT = 90
+ATTEMPTS = 3
 
 # префикс полей веб-части табло, меняется при переверстке страницы
 FIELD_PREFIX = "ctl00$ctl49$g_3d254c0d_a345_4dc8_b11b_9b55f87a5892$ctl00$"
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(ROOT, "data", "raw", "board")
-
-
-def ssl_context():
-    try:
-        import certifi
-        return ssl.create_default_context(cafile=certifi.where())
-    except ImportError:
-        pass
-    if os.path.exists("/etc/ssl/cert.pem"):
-        return ssl.create_default_context(cafile="/etc/ssl/cert.pem")
-    return ssl.create_default_context()
-
-
-def make_opener():
-    """Сайт на SharePoint, ему нужны cookies сессии и токены из формы."""
-    cj = http.cookiejar.CookieJar()
-    opener = urllib.request.build_opener(
-        urllib.request.HTTPCookieProcessor(cj),
-        urllib.request.HTTPSHandler(context=ssl_context()))
-    opener.addheaders = [("User-Agent", USER_AGENT)]
-    return opener
 
 
 def hidden_value(page, name):
@@ -77,21 +55,12 @@ def hidden_value(page, name):
 def build_form(page, date, direction):
     """direction: departures (из Кейптауна) или arrivals (в Кейптаун)."""
     p = FIELD_PREFIX
+    # из всей формы SharePoint нужны только токены страницы и поля расширенного поиска
     form = {
-        "__EVENTTARGET": "", "__EVENTARGUMENT": "", "__REQUESTDIGEST": "noDigest",
+        "__EVENTTARGET": "", "__EVENTARGUMENT": "",
         "__VIEWSTATE": hidden_value(page, "__VIEWSTATE"),
         "__VIEWSTATEGENERATOR": hidden_value(page, "__VIEWSTATEGENERATOR"),
         "__EVENTVALIDATION": hidden_value(page, "__EVENTVALIDATION"),
-        "MSOWebPartPage_PostbackSource": "", "MSOTlPn_SelectedWpId": "", "MSOTlPn_View": "0",
-        "MSOTlPn_ShowSettings": "False", "MSOGallery_SelectedLibrary": "",
-        "MSOGallery_FilterString": "", "MSOTlPn_Button": "none",
-        "MSOSPWebPartManager_DisplayModeName": "Browse",
-        "MSOSPWebPartManager_ExitingDesignMode": "false", "MSOWebPartPage_Shared": "",
-        "MSOLayout_LayoutChanges": "", "MSOLayout_InDesignMode": "",
-        "_wpSelected": "", "_wzSelected": "",
-        "MSOSPWebPartManager_OldDisplayModeName": "Browse",
-        "MSOSPWebPartManager_StartWebPartEditingName": "false",
-        "MSOSPWebPartManager_EndWebPartEditing": "false",
         p + "hdnSearchMode": "advanced",
         p + "hdnFlightNumber": "",
         p + "hdnArrivalDeparture": "both",
@@ -146,12 +115,12 @@ def collect(date, dry_run=False):
               f"даты {date}, время 00:00-23:59")
         return None, 0
 
-    opener = make_opener()
+    opener = web.browser_session()
     entries, flights, failed = [], [], 0
     for direction in ("departures", "arrivals"):
         started = time.monotonic()
         entry = {"direction": direction, "date": date, "attempts": 0}
-        for attempt in range(2):  # сайт изредка отдаёт пустой результат, пробуем ещё раз
+        for attempt in range(ATTEMPTS):  # сайт изредка отдаёт пустой результат
             entry["attempts"] = attempt + 1
             entry.pop("error", None)
             try:
@@ -180,7 +149,7 @@ def collect(date, dry_run=False):
             failed += 1
             print(f"  {direction:11s} ошибка: {entry['error']}")
         else:
-            retry = " со второй попытки" if entry["attempts"] > 1 else ""
+            retry = f" с попытки {entry['attempts']}" if entry["attempts"] > 1 else ""
             print(f"  {direction:11s} {entry['parsed']} рейсов "
                   f"(сайт сообщает {entry['reported']}){retry}")
             if not entry["parsed"]:

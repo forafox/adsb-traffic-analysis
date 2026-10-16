@@ -27,15 +27,12 @@
 import argparse
 import json
 import os
-import ssl
 import sys
 import time
 import urllib.error
-import urllib.request
 from datetime import datetime, timezone
 
-USER_AGENT = "adsb-traffic-analysis/1.0 (university data engineering project)"
-TIMEOUT = 30
+import web
 
 # bbox: (lat_min, lon_min, lat_max, lon_max)
 REGIONS = {
@@ -48,21 +45,6 @@ DEFAULT_INTERVAL = 300
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RAW_DIR = os.path.join(ROOT, "data", "raw")
-
-
-def ssl_context():
-    """Python с python.org на macOS не видит системные сертификаты, подставляем их явно."""
-    try:
-        import certifi
-        return ssl.create_default_context(cafile=certifi.where())
-    except ImportError:
-        pass
-    if os.path.exists("/etc/ssl/cert.pem"):
-        return ssl.create_default_context(cafile="/etc/ssl/cert.pem")
-    return ssl.create_default_context()
-
-
-SSL_CTX = ssl_context()
 
 
 def opensky_url(bbox):
@@ -104,12 +86,6 @@ def count_aircraft(body):
     return None
 
 
-def fetch(url):
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=TIMEOUT, context=SSL_CTX) as resp:
-        return resp.status, resp.read().decode("utf-8")
-
-
 def collect(regions, sources, dry_run=False):
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = os.path.join(RAW_DIR, run_id)
@@ -128,14 +104,13 @@ def collect(regions, sources, dry_run=False):
             entry = {"source": source, "region": region, "bbox": list(REGIONS[region]),
                      "url": url, "file": name}
             try:
-                status, body = fetch(url)
+                body = web.get(url)
             except urllib.error.HTTPError as e:
                 entry["error"] = f"HTTP {e.code}"
             except Exception as e:
                 entry["error"] = f"{type(e).__name__}: {e}"[:200]
             else:
-                entry.update(http_status=status, bytes=len(body.encode("utf-8")),
-                             aircraft=count_aircraft(body))
+                entry.update(bytes=len(body.encode("utf-8")), aircraft=count_aircraft(body))
                 os.makedirs(run_dir, exist_ok=True)
                 with open(os.path.join(run_dir, name), "w", encoding="utf-8") as f:
                     f.write(body)

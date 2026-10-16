@@ -1,12 +1,9 @@
 """Табло аэропорта Кейптауна: сбор рейсов за сутки и загрузка в три хранилища."""
 
 import os
-import sys
 from datetime import datetime
 
 from airflow.sdk import dag, task
-
-sys.path.insert(0, os.environ.get("PROJECT_DIR", "/opt/project"))
 
 import datasets
 import ods
@@ -22,8 +19,10 @@ def ods_board():
         # при ручном запуске без расписания logical_date не передаётся
         day = (logical_date or datetime.now(SAST)).astimezone(SAST)
         path, failed = collect(day.strftime("%Y-%m-%d"))
-        if not path:
-            raise RuntimeError("табло не отдало ни одного рейса")
+        # половина табло хуже отсутствия данных: молча загруженный неполный день
+        # исказит анализ, поэтому задача падает и снимок остаётся незагруженным
+        if failed:
+            raise RuntimeError("табло отдало не все направления, снимок не загружаем")
         return path
 
     @task

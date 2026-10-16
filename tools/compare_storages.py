@@ -20,10 +20,7 @@ import glob
 import json
 import os
 import statistics
-import sys
 import time
-
-sys.path.insert(0, "/opt/airflow/dags")
 
 import ods
 

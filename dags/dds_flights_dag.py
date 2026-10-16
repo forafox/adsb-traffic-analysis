@@ -1,13 +1,9 @@
 """DDS: рейсы с табло. ODS -> авиакомпании и аэропорты (SCD1) -> факт рейса с задержкой."""
 
-import os
-import sys
 from datetime import datetime
 
 from airflow.providers.standard.sensors.python import PythonSensor
 from airflow.sdk import dag, task
-
-sys.path.insert(0, os.environ.get("PROJECT_DIR", "/opt/project"))
 
 import datasets
 import dds

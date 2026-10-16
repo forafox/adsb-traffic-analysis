@@ -19,16 +19,14 @@ METAR нужен для анализа: выбор посадочной поло
 import argparse
 import json
 import os
-import ssl
 import sys
 import urllib.error
 import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 
+import web
+
 API = "https://aviationweather.gov/api/data/metar"
-USER_AGENT = "adsb-traffic-analysis/1.0 (university data engineering project)"
-TIMEOUT = 40
 
 # FACT Кейптаун, FAOR Йоханнесбург, FALE Дурбан, FAPE Гкеберха
 DEFAULT_AIRPORTS = "FACT,FAOR,FALE,FAPE"
@@ -36,17 +34,6 @@ DEFAULT_HOURS = 12
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(ROOT, "data", "raw", "weather")
-
-
-def ssl_context():
-    try:
-        import certifi
-        return ssl.create_default_context(cafile=certifi.where())
-    except ImportError:
-        pass
-    if os.path.exists("/etc/ssl/cert.pem"):
-        return ssl.create_default_context(cafile="/etc/ssl/cert.pem")
-    return ssl.create_default_context()
 
 
 def collect(airports, hours, dry_run=False):
@@ -59,10 +46,7 @@ def collect(airports, hours, dry_run=False):
         return None, 0
 
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-        with urllib.request.urlopen(req, timeout=TIMEOUT, context=ssl_context()) as resp:
-            body = resp.read().decode("utf-8")
-        observations = json.loads(body)
+        observations = json.loads(web.get(url))
     except urllib.error.HTTPError as e:
         print(f"  ошибка: HTTP {e.code}")
         return None, 1

@@ -92,6 +92,9 @@ def read_positions(run_id):
 def read_flights(path):
     with open(path, encoding="utf-8") as f:
         snapshot = json.load(f)
+    if any(not r.get("parsed") for r in snapshot["requests"]):
+        print(f"Пропускаем неполный снимок табло: {os.path.basename(path)}")
+        return []
     return [{"run_id": snapshot["run_id"], "flight_date": snapshot["date"],
              "direction": f.get("direction", ""), "flight_number": f.get("flight_number", ""),
              "airline": f.get("airline", ""), "schedule_time": f.get("schedule_time", ""),

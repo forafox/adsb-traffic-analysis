@@ -1,12 +1,9 @@
 """Погода METAR по аэропортам ЮАР: сбор сводок и загрузка в три хранилища."""
 
 import os
-import sys
 from datetime import datetime
 
 from airflow.sdk import dag, task
-
-sys.path.insert(0, os.environ.get("PROJECT_DIR", "/opt/project"))
 
 import datasets
 import ods

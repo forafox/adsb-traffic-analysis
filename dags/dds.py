@@ -5,7 +5,6 @@
 """
 
 import os
-import re
 
 PROJECT_DIR = os.environ.get("PROJECT_DIR", "/opt/project")
 SQL_DIR = os.path.join(PROJECT_DIR, "sql", "dds")

@@ -2,12 +2,9 @@
 
 import glob
 import os
-import sys
 from datetime import datetime
 
 from airflow.sdk import dag, task
-
-sys.path.insert(0, os.environ.get("PROJECT_DIR", "/opt/project"))
 
 import datasets
 import ods
