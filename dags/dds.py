@@ -40,9 +40,18 @@ def run_script(name, table=None):
     return added
 
 
+# статические измерения наполняют все три DAGа DDS, и при одновременном запуске
+# проверка «такой строки ещё нет» не спасает от гонки, поэтому дубли схлопываются явно
+STATIC_DIMS = ["dds_dim_date", "dds_dim_source", "dds_dim_region", "dds_dim_airline",
+               "dds_dim_airport", "dds_dim_aircraft_type", "dds_dim_aircraft"]
+
+
 def ensure_schema():
     run_script("00_schema.sql")
     run_script("10_static.sql")
+    ch = client()
+    for table in STATIC_DIMS:
+        ch.command(f"optimize table {table} final")
 
 
 def ods_ready(table):
