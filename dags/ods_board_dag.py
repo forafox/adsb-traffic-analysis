@@ -1,4 +1,4 @@
-"""Табло аэропорта Кейптауна: сбор рейсов за сутки и загрузка в три хранилища."""
+"""Табло аэропорта Кейптауна: сбор рейсов за сутки и загрузка в ODS."""
 
 import os
 from datetime import datetime
@@ -25,15 +25,11 @@ def ods_board():
             raise RuntimeError("табло отдало не все направления, снимок не загружаем")
         return path
 
-    @task
-    def load(storage: str, path: str) -> int:
-        return ods.load("flights", storage, ods.read_flights(path))
-
     @task(outlets=[datasets.ODS_FLIGHTS])
-    def publish(loaded):
-        print(f"Загрузка в ODS завершена: {list(loaded)}")
+    def load(path: str) -> int:
+        return ods.load("flights", ods.read_flights(path))
 
-    publish(load.partial(path=extract()).expand(storage=list(ods.LOADERS)))
+    load(extract())
 
 
 ods_board()

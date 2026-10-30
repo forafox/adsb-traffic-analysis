@@ -30,7 +30,7 @@
 ## Структура репозитория
 
 ```
-docker-compose.yml      Airflow, три хранилища и веб-интерфейсы к ним
+docker-compose.yml      Airflow и ClickHouse
 
 collectors/             сбор сырых данных из внешних источников
     collect.py          снимки позиций бортов из трёх источников
@@ -42,13 +42,13 @@ collectors/             сбор сырых данных из внешних и�
 dags/                   процессы Airflow, по файлу на DAG: ods_* загрузка сырых данных,
                         dds_* построение детального слоя и проверка качества
 etl/                    код, который вызывают DAGи
-    ods.py              загрузка снимка в Postgres, ClickHouse и MongoDB
+    ods.py              разбор снимка и загрузка его в сырой слой
     dds.py              запуск SQL-скриптов слоя DDS
     dq.py               проверки качества: SQL, пороги и уровни
     datasets.py         assets, по которым DAGи запускают друг друга
+    clickhouse.py       подключение к базе
 sql/dds/                SQL слоя DDS: схема, измерения, факты
 
-tools/compare_storages.py, tools/compare_charts.py  замеры хранилищ и графики к ним
 tools/analysis_charts.py  первичный анализ рейсов: загрузка по часам и задержки
 tools/scd2_demo.py        проверка механизма SCD2 на синтетическом борте
 
@@ -59,7 +59,7 @@ data/                   собранные данные, в репозитори
 ## Быстрый старт
 
 ```bash
-docker compose up -d        # Airflow, ClickHouse, PostgreSQL, MongoDB
+docker compose up -d        # Airflow и ClickHouse
 open http://localhost:8080  # интерфейс Airflow, логин airflow / airflow
 ```
 
@@ -75,8 +75,8 @@ DAGи DDS подписаны на assets слоя ODS и стартуют, ко�
 `dds_quality` запускается, когда обновились все три потока DDS.
 Разовая загрузка всего, что собрано руками: `airflow dags trigger ods_archive`.
 
-Кроме Airflow в compose поднимаются веб-интерфейсы к хранилищам: Adminer для PostgreSQL
-на порту 8081, mongo-express на 8082, встроенный интерфейс ClickHouse на 8123/play.
+Смотреть данные можно во встроенном интерфейсе ClickHouse на `localhost:8123/play`
+или из командной строки: `docker compose exec clickhouse clickhouse-client -u ods --password ods -d ods`.
 
 ## Сбор данных
 
@@ -184,8 +184,9 @@ data/raw/
 
 ## План работ
 
-**ЛР1. Airflow и ETL.** Выполнена, см. [REPORT.md](REPORT.md): `docker compose up -d`
-поднимает Airflow и три хранилища, DAGи в `dags/` грузят сырые данные в ODS.
+**ЛР1. Airflow и ETL.** Выполнена, см. [REPORT.md](REPORT.md): Airflow в Docker, DAGи
+в `dags/` грузят сырые данные в ODS. Сравнение трёх хранилищ описано в отчёте; по его
+итогам проект работает на одном ClickHouse, PostgreSQL и MongoDB из compose убраны.
 
 **ЛР2. Нормализация и Data Quality.** Выполнена, см. [REPORT_LR2.md](REPORT_LR2.md):
 слой DDS в ClickHouse (созвездие фактов, SCD2 для самолётов), DAGи `dds_*` и `dds_quality`,

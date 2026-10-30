@@ -1,4 +1,4 @@
-"""Позиции воздушных судов: опрос трёх API и загрузка снимка в три хранилища."""
+"""Позиции воздушных судов: опрос трёх API и загрузка снимка в ODS."""
 
 import os
 from datetime import datetime
@@ -24,15 +24,11 @@ def ods_positions():
             print(f"Источников с ошибкой: {failed}, грузим то, что собралось")
         return snapshot
 
-    @task
-    def load(storage: str, snapshot: str) -> int:
-        return ods.load("positions", storage, ods.read_positions(snapshot))
-
     @task(outlets=[datasets.ODS_POSITIONS])
-    def publish(loaded):
-        print(f"Загрузка в ODS завершена: {list(loaded)}")
+    def load(snapshot: str) -> int:
+        return ods.load("positions", ods.read_positions(snapshot))
 
-    publish(load.partial(snapshot=extract()).expand(storage=list(ods.LOADERS)))
+    load(extract())
 
 
 ods_positions()

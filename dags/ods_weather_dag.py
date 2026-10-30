@@ -1,4 +1,4 @@
-"""Погода METAR по аэропортам ЮАР: сбор сводок и загрузка в три хранилища."""
+"""Погода METAR по аэропортам ЮАР: сбор сводок и загрузка в ODS."""
 
 import os
 from datetime import datetime
@@ -24,15 +24,11 @@ def ods_weather():
             raise RuntimeError("METAR не отдал сводок")
         return path
 
-    @task
-    def load(storage: str, path: str) -> int:
-        return ods.load("metar", storage, ods.read_metar(path))
-
     @task(outlets=[datasets.ODS_METAR])
-    def publish(loaded):
-        print(f"Загрузка в ODS завершена: {list(loaded)}")
+    def load(path: str) -> int:
+        return ods.load("metar", ods.read_metar(path))
 
-    publish(load.partial(path=extract()).expand(storage=list(ods.LOADERS)))
+    load(extract())
 
 
 ods_weather()

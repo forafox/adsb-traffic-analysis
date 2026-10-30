@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Что уже собрано: список снимков позиций и сводка по источникам.
 
-    python3 collectors/summary.py          таблица по запускам
-    python3 collectors/summary.py --short  только итоги
+    python3 collectors/summary.py таблица по запускам
+    python3 collectors/summary.py --short только итоги
 """
 
 import argparse

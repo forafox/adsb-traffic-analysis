@@ -6,16 +6,10 @@
 
 import os
 
+from clickhouse import client
+
 PROJECT_DIR = os.environ.get("PROJECT_DIR", "/opt/project")
 SQL_DIR = os.path.join(PROJECT_DIR, "sql", "dds")
-CH_HOST = os.environ["ODS_CLICKHOUSE_HOST"]
-
-
-def client():
-    import clickhouse_connect
-
-    return clickhouse_connect.get_client(host=CH_HOST, username="ods", password="ods",
-                                         database="ods")
 
 
 def statements(name):

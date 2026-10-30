@@ -1,8 +1,7 @@
-"""Загрузка сырых снимков в слой ODS трёх хранилищ.
+"""Загрузка сырых снимков в слой ODS.
 
-Один и тот же набор записей пишется в Postgres, ClickHouse и MongoDB, чтобы хранилища
-можно было сравнивать на одинаковых данных. Записи остаются сырыми: разобраны только
-поля, по которым потом идут запросы, остальное лежит в колонке raw целиком.
+Записи остаются сырыми: разобраны только поля, по которым потом идут запросы,
+остальное лежит в колонке raw целиком.
 
 Повторная загрузка того же снимка пропускается: проверяется наличие его run_id.
 """
@@ -10,47 +9,35 @@
 import json
 import os
 
+from clickhouse import client
+
 PROJECT_DIR = os.environ.get("PROJECT_DIR", "/opt/project")
 RAW_DIR = os.path.join(PROJECT_DIR, "data", "raw")
 POSITIONS_DIR = os.path.join(RAW_DIR, "positions")
 BOARD_DIR = os.path.join(RAW_DIR, "board")
 WEATHER_DIR = os.path.join(RAW_DIR, "weather")
 
-PG_DSN = os.environ["ODS_POSTGRES_DSN"]
-CH_HOST = os.environ["ODS_CLICKHOUSE_HOST"]
-MONGO_URI = os.environ["ODS_MONGO_URI"]
-
-# колонки ODS: имя, тип в Postgres, тип в ClickHouse
+# колонки ODS: имя и тип
 DATASETS = {
     "positions": [
-        ("run_id", "text", "String"), ("source", "text", "String"),
-        ("region", "text", "String"), ("fetched_at", "text", "String"),
-        ("icao24", "text", "String"), ("callsign", "text", "String"),
-        ("lat", "double precision", "Nullable(Float64)"),
-        ("lon", "double precision", "Nullable(Float64)"),
-        ("alt_m", "double precision", "Nullable(Float64)"),
-        ("on_ground", "boolean", "UInt8"),
-        ("speed_ms", "double precision", "Nullable(Float64)"),
-        ("track", "double precision", "Nullable(Float64)"),
-        ("raw", "jsonb", "String"),
+        ("run_id", "String"), ("source", "String"), ("region", "String"),
+        ("fetched_at", "String"), ("icao24", "String"), ("callsign", "String"),
+        ("lat", "Nullable(Float64)"), ("lon", "Nullable(Float64)"),
+        ("alt_m", "Nullable(Float64)"), ("on_ground", "UInt8"),
+        ("speed_ms", "Nullable(Float64)"), ("track", "Nullable(Float64)"),
+        ("raw", "String"),
     ],
     "flights": [
-        ("run_id", "text", "String"), ("flight_date", "text", "String"),
-        ("direction", "text", "String"), ("flight_number", "text", "String"),
-        ("airline", "text", "String"), ("schedule_time", "text", "String"),
-        ("updated_time", "text", "String"), ("status", "text", "String"),
-        ("origin", "text", "String"), ("destination", "text", "String"),
-        ("raw", "jsonb", "String"),
+        ("run_id", "String"), ("flight_date", "String"), ("direction", "String"),
+        ("flight_number", "String"), ("airline", "String"), ("schedule_time", "String"),
+        ("updated_time", "String"), ("status", "String"), ("origin", "String"),
+        ("destination", "String"), ("raw", "String"),
     ],
     "metar": [
-        ("run_id", "text", "String"), ("icao", "text", "String"),
-        ("report_time", "text", "String"),
-        ("wind_dir", "double precision", "Nullable(Float64)"),
-        ("wind_speed", "double precision", "Nullable(Float64)"),
-        ("visibility", "text", "String"),
-        ("temp_c", "double precision", "Nullable(Float64)"),
-        ("altimeter", "double precision", "Nullable(Float64)"),
-        ("raw_ob", "text", "String"), ("raw", "jsonb", "String"),
+        ("run_id", "String"), ("icao", "String"), ("report_time", "String"),
+        ("wind_dir", "Nullable(Float64)"), ("wind_speed", "Nullable(Float64)"),
+        ("visibility", "String"), ("temp_c", "Nullable(Float64)"),
+        ("altimeter", "Nullable(Float64)"), ("raw_ob", "String"), ("raw", "String"),
     ],
 }
 
@@ -118,66 +105,28 @@ def read_metar(path):
             for o in snapshot["observations"]]
 
 
-def load_postgres(dataset, rows):
-    import psycopg2
-    from psycopg2.extras import execute_values
-
-    columns = DATASETS[dataset]
-    names = [c[0] for c in columns]
-    table = f"ods_{dataset}"
-    with psycopg2.connect(PG_DSN) as conn, conn.cursor() as cur:
-        cur.execute(f"create table if not exists {table} ("
-                    + ", ".join(f"{n} {t}" for n, t, _ in columns)
-                    + ", loaded_at timestamptz default now())")
-        cur.execute(f"create index if not exists {table}_run_id on {table} (run_id)")
-        cur.execute(f"select 1 from {table} where run_id = %s limit 1", (rows[0]["run_id"],))
-        if cur.fetchone():
-            return 0
-        execute_values(cur, f"insert into {table} ({', '.join(names)}) values %s",
-                       [tuple(r.get(n) for n in names) for r in rows])
-    return len(rows)
-
-
-def load_clickhouse(dataset, rows):
-    import clickhouse_connect
-
-    columns = DATASETS[dataset]
-    names = [c[0] for c in columns]
-    table = f"ods_{dataset}"
-    client = clickhouse_connect.get_client(host=CH_HOST, username="ods", password="ods",
-                                           database="ods")
-    client.command(f"create table if not exists {table} ("
-                   + ", ".join(f"{n} {t}" for n, _, t in columns)
-                   + ", loaded_at DateTime default now()) engine = MergeTree order by run_id")
-    if client.query(f"select 1 from {table} where run_id = {{r:String}} limit 1",
-                    parameters={"r": rows[0]["run_id"]}).result_rows:
-        return 0
-    client.insert(table, [[r.get(n) if r.get(n) is not None else
-                           (0 if n == "on_ground" else None) for n in names] for r in rows],
-                  column_names=names)
-    return len(rows)
-
-
-def load_mongo(dataset, rows):
-    from pymongo import MongoClient
-
-    collection = MongoClient(MONGO_URI)["ods"][f"ods_{dataset}"]
-    collection.create_index("run_id")
-    if collection.find_one({"run_id": rows[0]["run_id"]}):
-        return 0
-    # в документной базе raw хранится объектом, а не строкой
-    collection.insert_many([{**r, "raw": json.loads(r["raw"])} for r in rows])
-    return len(rows)
-
-
-LOADERS = {"postgres": load_postgres, "clickhouse": load_clickhouse, "mongo": load_mongo}
-
-
-def load(dataset, storage, rows):
+def load(dataset, rows):
+    """Вставляет снимок, если его ещё нет. Возвращает число загруженных строк."""
     if not rows:
         print("Нечего загружать")
         return 0
-    inserted = LOADERS[storage](dataset, rows)
-    print(f"{storage}: {'загружено ' + str(inserted) if inserted else 'снимок уже загружен'}"
-          f" ({dataset}, run_id {rows[0]['run_id']})")
-    return inserted
+
+    columns = DATASETS[dataset]
+    names = [name for name, _ in columns]
+    table = f"ods_{dataset}"
+    run_id = rows[0]["run_id"]
+
+    ch = client()
+    ch.command(f"create table if not exists {table} ("
+               + ", ".join(f"{name} {type_}" for name, type_ in columns)
+               + ", loaded_at DateTime default now()) engine = MergeTree order by run_id")
+    if ch.query(f"select 1 from {table} where run_id = {{r:String}} limit 1",
+                parameters={"r": run_id}).result_rows:
+        print(f"{table}: снимок уже загружен (run_id {run_id})")
+        return 0
+
+    ch.insert(table, [[row.get(name) if row.get(name) is not None else
+                       (0 if name == "on_ground" else None) for name in names] for row in rows],
+              column_names=names)
+    print(f"{table}: загружено {len(rows)} строк (run_id {run_id})")
+    return len(rows)

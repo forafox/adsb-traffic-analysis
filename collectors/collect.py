@@ -5,19 +5,19 @@
 как есть в отдельную папку с меткой времени UTC:
 
     data/raw/positions/20260927T101500Z/
-        manifest.json      что, откуда и когда забрали
-        opensky_cpt.json   ответ OpenSky без изменений
-        adsblol_cpt.json   ответ adsb.lol без изменений
+        manifest.json что, откуда и когда забрали
+        opensky_cpt.json ответ OpenSky без изменений
+        adsblol_cpt.json ответ adsb.lol без изменений
 
 Ответы не парсятся и не переписываются: в хранилище ЛР1 они пойдут сырыми.
 
 Запуск:
-    python3 collectors/collect.py                          один снимок
-    python3 collectors/collect.py --repeat 12              серия из 12 снимков с паузой 5 минут
-    python3 collectors/collect.py --repeat 12 --interval 120   та же серия, но раз в 2 минуты
-    python3 collectors/collect.py --regions cpt            только Кейптаун, без остальной ЮАР
-    python3 collectors/collect.py --sources opensky        только один источник
-    python3 collectors/collect.py --dry-run                показать, что будет собрано, без записи
+    python3 collectors/collect.py один снимок
+    python3 collectors/collect.py --repeat 12 серия из 12 снимков с паузой 5 минут
+    python3 collectors/collect.py --repeat 12 --interval 120 та же серия, но раз в 2 минуты
+    python3 collectors/collect.py --regions cpt только Кейптаун, без остальной ЮАР
+    python3 collectors/collect.py --sources opensky только один источник
+    python3 collectors/collect.py --dry-run показать, что будет собрано, без записи
 
 Серия прерывается по Ctrl+C, уже сохранённые снимки при этом остаются.
 
