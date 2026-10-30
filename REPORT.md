@@ -323,9 +323,10 @@ docker compose exec clickhouse clickhouse-client -u ods --password ods -d ods -q
 docker compose exec mongo mongosh -u ods -p ods --eval 'db.getSiblingDB("ods").ods_positions.countDocuments({})'
 ```
 
-Замеры и графики:
+Замеры и графики (скрипты удалены вместе с двумя хранилищами, лежат в коммите `0077e32`):
 
 ```bash
+git checkout 0077e32 -- tools/compare_storages.py tools/compare_charts.py
 docker compose exec airflow-scheduler python /opt/project/tools/compare_storages.py
 python3 tools/compare_charts.py
 ```
