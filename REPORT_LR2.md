@@ -225,7 +225,7 @@ erDiagram
 
 Детальный слой должен ждать загрузки исходных данных. Использованы два механизма:
 
-1. **Assets Airflow 3** ([dags/datasets.py](dags/datasets.py)). DAGи ODS в конце публикуют
+1. **Assets Airflow 3** ([etl/datasets.py](etl/datasets.py)). DAGи ODS в конце публикуют
    asset (`ods_positions`, `ods_flights`, `ods_metar`), и DAGи DDS стартуют сами, когда asset
    обновлён. Публикует отдельная задача `publish`, которая зависит от всех трёх задач
    загрузки (по одной на хранилище), поэтому DDS не стартует, пока ClickHouse не дозагрузился.
@@ -265,7 +265,7 @@ ods_archive   ─► все три asset
 ## 6. Data Quality
 
 DAG `dds_quality` запускается, когда обновились все три потока DDS. Проверки лежат
-в [dags/dq.py](dags/dq.py), каждая это SQL с одним числом и правило «не больше / не меньше
+в [etl/dq.py](etl/dq.py), каждая это SQL с одним числом и правило «не больше / не меньше
 порога». Результат пишется в `dds_dq_results`. Проверка уровня `error` валит DAG,
 `warn` только помечается.
 
@@ -353,10 +353,10 @@ dds_flights   | /opt/airflow/dags/dds_flights_dag.py   | airflow | False
 dds_positions | /opt/airflow/dags/dds_positions_dag.py | airflow | False
 dds_quality   | /opt/airflow/dags/dds_quality_dag.py   | airflow | False
 dds_weather   | /opt/airflow/dags/dds_weather_dag.py   | airflow | False
-ods_archive   | /opt/airflow/dags/archive_dag.py       | airflow | False
-ods_board     | /opt/airflow/dags/board_dag.py         | airflow | False
-ods_positions | /opt/airflow/dags/positions_dag.py     | airflow | False
-ods_weather   | /opt/airflow/dags/weather_dag.py       | airflow | False
+ods_archive   | /opt/airflow/dags/ods_archive_dag.py   | airflow | False
+ods_board     | /opt/airflow/dags/ods_board_dag.py     | airflow | False
+ods_positions | /opt/airflow/dags/ods_positions_dag.py | airflow | False
+ods_weather   | /opt/airflow/dags/ods_weather_dag.py   | airflow | False
 ```
 
 Запуск `dds_positions`: сенсор ожидания ODS, построение измерения, два факта и публикация
@@ -470,7 +470,7 @@ group by a.airline_name having flights >= 15 order by avg_delay desc
 
 1. **Задвоение статических измерений.** Три DAGа DDS стартуют одновременно по assets,
    и каждый вызывает `ensure_schema`. Проверка «такой строки ещё нет» не спасает от гонки:
-   в `dds_dim_date` оказалось 3000 строк на 1500 дат. Исправлено в `dags/dds.py` —
+   в `dds_dim_date` оказалось 3000 строк на 1500 дат. Исправлено в `etl/dds.py` —
    после наполнения справочников выполняется `optimize table ... final`, дубли схлопываются.
    На чтение это не влияло (везде используется `FINAL`), но таблицы росли при каждом прогоне.
 2. **Недоказуемый SCD2.** Описан выше: добавлен `tools/scd2_demo.py`.

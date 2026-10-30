@@ -8,10 +8,10 @@ METAR нужен для анализа: выбор посадочной поло
 Даже если сбор запускать дважды в день, пропусков не будет.
 
 Запуск:
-    python3 collect_weather.py                  последние 12 часов по четырём аэропортам
-    python3 collect_weather.py --hours 24       за сутки
-    python3 collect_weather.py --airports FACT  только Кейптаун
-    python3 collect_weather.py --dry-run        показать запрос, ничего не сохраняя
+    python3 collectors/collect_weather.py                  последние 12 часов по четырём аэропортам
+    python3 collectors/collect_weather.py --hours 24       за сутки
+    python3 collectors/collect_weather.py --airports FACT  только Кейптаун
+    python3 collectors/collect_weather.py --dry-run        показать запрос, ничего не сохраняя
 
 Ключ доступа не нужен.
 """
@@ -32,7 +32,7 @@ API = "https://aviationweather.gov/api/data/metar"
 DEFAULT_AIRPORTS = "FACT,FAOR,FALE,FAPE"
 DEFAULT_HOURS = 12
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, "data", "raw", "weather")
 
 

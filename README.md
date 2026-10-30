@@ -30,14 +30,22 @@
 ## Структура репозитория
 
 ```
-collect.py              снимки позиций бортов из трёх источников
-collect_board.py        табло аэропорта Кейптауна: расписание и фактические времена
-collect_weather.py      сводки METAR по аэропортам ЮАР
-web.py                  общий HTTP-клиент сборщиков
-summary.py              что уже собрано: таблица по запускам и итоги
-
 docker-compose.yml      Airflow, три хранилища и веб-интерфейсы к ним
-dags/                   ETL-процессы: загрузка в ODS (ЛР1), слой DDS и качество (ЛР2)
+
+collectors/             сбор сырых данных из внешних источников
+    collect.py          снимки позиций бортов из трёх источников
+    collect_board.py    табло аэропорта Кейптауна: расписание и фактические времена
+    collect_weather.py  сводки METAR по аэропортам ЮАР
+    web.py              общий HTTP-клиент сборщиков
+    summary.py          что уже собрано: таблица по запускам и итоги
+
+dags/                   процессы Airflow, по файлу на DAG: ods_* загрузка сырых данных,
+                        dds_* построение детального слоя и проверка качества
+etl/                    код, который вызывают DAGи
+    ods.py              загрузка снимка в Postgres, ClickHouse и MongoDB
+    dds.py              запуск SQL-скриптов слоя DDS
+    dq.py               проверки качества: SQL, пороги и уровни
+    datasets.py         assets, по которым DAGи запускают друг друга
 sql/dds/                SQL слоя DDS: схема, измерения, факты
 
 tools/compare_storages.py, tools/compare_charts.py  замеры хранилищ и графики к ним
@@ -83,9 +91,9 @@ DAGи DDS подписаны на assets слоя ODS и стартуют, ко�
 
 ```bash
 cd ~/study/data
-python3 collect.py --repeat 12      серия из 12 снимков, час работы
-python3 collect_board.py            табло за сегодня
-python3 collect_weather.py          погода за последние 12 часов
+python3 collectors/collect.py --repeat 12    серия из 12 снимков, час работы
+python3 collectors/collect_board.py          табло за сегодня
+python3 collectors/collect_weather.py        погода за последние 12 часов
 ```
 
 Позиции бортов меняются каждую секунду, поэтому их имеет смысл снимать серией: за час
@@ -108,7 +116,7 @@ python3 collect_weather.py          погода за последние 12 ча
   opensky_za.json       34 бортов, 12.1 КБ
   adsblol_za.json       31 бортов, 61.4 КБ
   adsbfi_za.json        30 бортов, 60.2 КБ
-Сохранено в data/raw/20260927T101500Z, файлов: 6
+Сохранено в data/raw/positions/20260927T101500Z, файлов: 6
 ```
 
 Если источник не ответил, вместо числа бортов будет строка с ошибкой, а остальные источники
@@ -117,15 +125,15 @@ python3 collect_weather.py          погода за последние 12 ча
 ### Другие варианты запуска
 
 ```bash
-python3 collect.py                          один снимок
-python3 collect.py --repeat 12 --interval 120   серия чаще, раз в 2 минуты
-python3 collect.py --regions cpt            только Кейптаун, без остальной ЮАР
-python3 collect.py --sources opensky        только один источник
-python3 collect.py --dry-run                показать запросы, ничего не сохраняя
-python3 collect_board.py --date 2026-09-28  табло за другую дату
-python3 collect_weather.py --hours 24       погода за сутки
-python3 collect_weather.py --airports FACT  только Кейптаун
-python3 summary.py                          посмотреть, что уже собрано
+python3 collectors/collect.py                            один снимок
+python3 collectors/collect.py --repeat 12 --interval 120 серия чаще, раз в 2 минуты
+python3 collectors/collect.py --regions cpt              только Кейптаун, без остальной ЮАР
+python3 collectors/collect.py --sources opensky          только один источник
+python3 collectors/collect.py --dry-run                  показать запросы, ничего не сохраняя
+python3 collectors/collect_board.py --date 2026-09-28    табло за другую дату
+python3 collectors/collect_weather.py --hours 24         погода за сутки
+python3 collectors/collect_weather.py --airports FACT    только Кейптаун
+python3 collectors/summary.py                            посмотреть, что уже собрано
 ```
 
 ### Сколько запросов можно делать
@@ -140,16 +148,17 @@ python3 summary.py                          посмотреть, что уже 
 
 ```
 data/raw/
-    20260927T072000Z/
-        manifest.json        когда, откуда и сколько забрали
-        opensky_cpt.json     ответ OpenSky без изменений
-        adsblol_cpt.json     ответ adsb.lol без изменений
-        adsbfi_cpt.json
-        opensky_za.json
-        adsblol_za.json
-        adsbfi_za.json
-    20260927T181500Z/
-        ...
+    positions/
+        20260927T072000Z/
+            manifest.json        когда, откуда и сколько забрали
+            opensky_cpt.json     ответ OpenSky без изменений
+            adsblol_cpt.json     ответ adsb.lol без изменений
+            adsbfi_cpt.json
+            opensky_za.json
+            adsblol_za.json
+            adsbfi_za.json
+        20260927T181500Z/
+            ...
     board/
         20260927T072200Z_cpt.json   рейсы с табло за день
     weather/

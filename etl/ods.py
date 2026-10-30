@@ -12,6 +12,9 @@ import os
 
 PROJECT_DIR = os.environ.get("PROJECT_DIR", "/opt/project")
 RAW_DIR = os.path.join(PROJECT_DIR, "data", "raw")
+POSITIONS_DIR = os.path.join(RAW_DIR, "positions")
+BOARD_DIR = os.path.join(RAW_DIR, "board")
+WEATHER_DIR = os.path.join(RAW_DIR, "weather")
 
 PG_DSN = os.environ["ODS_POSTGRES_DSN"]
 CH_HOST = os.environ["ODS_CLICKHOUSE_HOST"]
@@ -58,7 +61,7 @@ def _num(value):
 
 def read_positions(run_id):
     """Снимок позиций: три источника отдают разный формат, приводим к одному набору полей."""
-    run_dir = os.path.join(RAW_DIR, run_id)
+    run_dir = os.path.join(POSITIONS_DIR, run_id)
     with open(os.path.join(run_dir, "manifest.json"), encoding="utf-8") as f:
         manifest = json.load(f)
     rows = []

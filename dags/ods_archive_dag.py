@@ -20,19 +20,19 @@ def ods_archive():
     @task(outlets=[datasets.ODS_POSITIONS])
     def positions() -> int:
         run_ids = sorted(os.path.basename(os.path.dirname(p))
-                         for p in glob.glob(os.path.join(ods.RAW_DIR, "*", "manifest.json")))
+                         for p in glob.glob(os.path.join(ods.POSITIONS_DIR, "*", "manifest.json")))
         print(f"Снимков позиций: {len(run_ids)}")
         return sum(load_everywhere("positions", ods.read_positions(r)) for r in run_ids)
 
     @task(outlets=[datasets.ODS_FLIGHTS])
     def flights() -> int:
-        paths = sorted(glob.glob(os.path.join(ods.RAW_DIR, "board", "*.json")))
+        paths = sorted(glob.glob(os.path.join(ods.BOARD_DIR, "*.json")))
         print(f"Снимков табло: {len(paths)}")
         return sum(load_everywhere("flights", ods.read_flights(p)) for p in paths)
 
     @task(outlets=[datasets.ODS_METAR])
     def metar() -> int:
-        paths = sorted(glob.glob(os.path.join(ods.RAW_DIR, "weather", "*.json")))
+        paths = sorted(glob.glob(os.path.join(ods.WEATHER_DIR, "*.json")))
         print(f"Снимков погоды: {len(paths)}")
         return sum(load_everywhere("metar", ods.read_metar(p)) for p in paths)
 

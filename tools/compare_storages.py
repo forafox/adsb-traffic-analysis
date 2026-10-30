@@ -34,7 +34,7 @@ OUT_PATH = os.path.join(ods.PROJECT_DIR, "data", "compare", "metrics.json")
 
 def bench_rows():
     """Собранные рейсы, размноженные SCALE раз: у каждой копии свой run_id."""
-    source = [r for path in sorted(glob.glob(os.path.join(ods.RAW_DIR, "board", "*.json")))
+    source = [r for path in sorted(glob.glob(os.path.join(ods.BOARD_DIR, "*.json")))
               for r in ods.read_flights(path)]
     rows = [{**r, "run_id": f"{r['run_id']}-c{copy}"}
             for copy in range(SCALE) for r in source]

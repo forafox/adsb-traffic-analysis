@@ -12,9 +12,9 @@
 Результат ложится в data/raw/board/ГГГГММДДTЧЧММССZ_cpt.json.
 
 Запуск:
-    python3 collect_board.py               рейсы за сегодня
-    python3 collect_board.py --date 2026-09-28
-    python3 collect_board.py --dry-run     показать запрос, ничего не сохраняя
+    python3 collectors/collect_board.py               рейсы за сегодня
+    python3 collectors/collect_board.py --date 2026-09-28
+    python3 collectors/collect_board.py --dry-run     показать запрос, ничего не сохраняя
 
 Табло меняется медленно, поэтому запускать его чаще одного-двух раз в день смысла нет.
 """
@@ -43,7 +43,7 @@ ATTEMPTS = 3
 # префикс полей веб-части табло, меняется при переверстке страницы
 FIELD_PREFIX = "ctl00$ctl49$g_3d254c0d_a345_4dc8_b11b_9b55f87a5892$ctl00$"
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, "data", "raw", "board")
 
 

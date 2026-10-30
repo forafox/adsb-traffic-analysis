@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Что уже собрано: список снимков из data/raw и сводка по источникам.
+"""Что уже собрано: список снимков позиций и сводка по источникам.
 
-    python3 summary.py          таблица по запускам
-    python3 summary.py --short  только итоги
+    python3 collectors/summary.py          таблица по запускам
+    python3 collectors/summary.py --short  только итоги
 """
 
 import argparse
@@ -12,8 +12,8 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 SAST = timezone(timedelta(hours=2))  # время Кейптауна
-ROOT = os.path.dirname(os.path.abspath(__file__))
-RAW_DIR = os.path.join(ROOT, "data", "raw")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAW_DIR = os.path.join(ROOT, "data", "raw", "positions")
 
 
 def load_runs():
@@ -36,7 +36,7 @@ def main():
 
     runs = load_runs()
     if not runs:
-        print(f"Снимков пока нет. Запустите: python3 collect.py")
+        print(f"Снимков пока нет. Запустите: python3 collectors/collect.py")
         return
 
     totals = defaultdict(lambda: {"runs": 0, "aircraft": 0, "bytes": 0, "errors": 0})

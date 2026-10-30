@@ -4,7 +4,7 @@
 Один запуск = один снимок: скрипт опрашивает источники и складывает ответы
 как есть в отдельную папку с меткой времени UTC:
 
-    data/raw/20260927T101500Z/
+    data/raw/positions/20260927T101500Z/
         manifest.json      что, откуда и когда забрали
         opensky_cpt.json   ответ OpenSky без изменений
         adsblol_cpt.json   ответ adsb.lol без изменений
@@ -12,12 +12,12 @@
 Ответы не парсятся и не переписываются: в хранилище ЛР1 они пойдут сырыми.
 
 Запуск:
-    python3 collect.py                          один снимок
-    python3 collect.py --repeat 12              серия из 12 снимков с паузой 5 минут
-    python3 collect.py --repeat 12 --interval 120   та же серия, но раз в 2 минуты
-    python3 collect.py --regions cpt            только Кейптаун, без остальной ЮАР
-    python3 collect.py --sources opensky        только один источник
-    python3 collect.py --dry-run                показать, что будет собрано, без записи
+    python3 collectors/collect.py                          один снимок
+    python3 collectors/collect.py --repeat 12              серия из 12 снимков с паузой 5 минут
+    python3 collectors/collect.py --repeat 12 --interval 120   та же серия, но раз в 2 минуты
+    python3 collectors/collect.py --regions cpt            только Кейптаун, без остальной ЮАР
+    python3 collectors/collect.py --sources opensky        только один источник
+    python3 collectors/collect.py --dry-run                показать, что будет собрано, без записи
 
 Серия прерывается по Ctrl+C, уже сохранённые снимки при этом остаются.
 
@@ -43,8 +43,8 @@ DEFAULT_REGIONS = "cpt,za"
 DEFAULT_SOURCES = "opensky,adsblol,adsbfi"
 DEFAULT_INTERVAL = 300
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-RAW_DIR = os.path.join(ROOT, "data", "raw")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAW_DIR = os.path.join(ROOT, "data", "raw", "positions")
 
 
 def opensky_url(bbox):
@@ -135,7 +135,7 @@ def collect(regions, sources, dry_run=False):
     with open(os.path.join(run_dir, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
 
-    print(f"Сохранено в data/raw/{run_id}, файлов: {len(entries) - failed}")
+    print(f"Сохранено в data/raw/positions/{run_id}, файлов: {len(entries) - failed}")
     return run_id, failed
 
 
