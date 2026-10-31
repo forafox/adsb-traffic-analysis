@@ -41,6 +41,7 @@ erDiagram
     dim_date ||--o{ fact_flight : date_key
     dim_date ||--o{ fact_weather : date_key
     dim_source ||--o{ fact_position : source_key
+    dim_source ||--o{ fact_aircraft_snapshot : best_source_key
     dim_region ||--o{ fact_position : region_code
     dim_aircraft ||--o{ fact_position : aircraft_sk
     dim_aircraft ||--o{ fact_aircraft_snapshot : aircraft_sk
@@ -51,47 +52,65 @@ erDiagram
 
     fact_position {
         string run_id PK
-        uint8 source_key PK
-        string region_code PK
+        uint8 source_key PK, FK
+        string region_code PK, FK
         string icao24 PK
         datetime snapshot_ts
+        uint32 date_key FK
         uint64 aircraft_sk FK
+        string callsign
         float lat
         float lon
-        float alt_m
-        float speed_ms
-        float track
+        float alt_m "NULL допустим"
         uint8 on_ground
+        float speed_ms "NULL допустим"
+        float track "NULL допустим"
     }
     fact_aircraft_snapshot {
         string run_id PK
         string icao24 PK
         datetime snapshot_ts
+        uint32 date_key FK
         uint64 aircraft_sk FK
-        uint8 best_source_key
+        string callsign
+        float lat
+        float lon
+        float alt_m "NULL допустим"
+        uint8 on_ground
+        float speed_ms "NULL допустим"
+        float track "NULL допустим"
+        uint8 best_source_key FK
         uint8 sources_count
         uint8 in_cpt
     }
     fact_flight {
         uint64 flight_key PK
+        date flight_date
+        uint32 date_key FK
         string direction
         string flight_number
         uint64 airline_key FK
         uint64 airport_key FK
         string status
         datetime scheduled_ts
-        datetime actual_ts
-        int delay_min
+        datetime actual_ts "NULL допустим"
+        int delay_min "NULL допустим"
+        uint32 snapshots_seen
+        string last_run_id
+        uint64 row_version
     }
     fact_weather {
         string icao_code PK
         datetime observed_ts PK
         uint64 airport_key FK
-        float wind_dir_deg
-        float wind_speed_kt
-        float visibility_sm
-        float temp_c
-        float altimeter_hpa
+        uint32 date_key FK
+        float wind_dir_deg "NULL допустим"
+        float wind_speed_kt "NULL допустим"
+        float visibility_sm "NULL допустим"
+        float temp_c "NULL допустим"
+        float altimeter_hpa "NULL допустим"
+        string raw_ob
+        uint64 row_version
     }
     dim_aircraft {
         uint64 aircraft_sk PK
@@ -102,6 +121,7 @@ erDiagram
         datetime valid_from
         datetime valid_to
         uint8 is_current
+        uint64 row_version
     }
     dim_aircraft_type {
         string type_code PK
@@ -119,6 +139,7 @@ erDiagram
     dim_source {
         uint8 source_key PK
         string source_name
+        string description
     }
     dim_region {
         string region_code PK
@@ -127,6 +148,22 @@ erDiagram
     dim_date {
         uint32 date_key PK
         date date
+        uint16 year
+        uint8 quarter
+        uint8 month
+        uint8 day
+        uint8 day_of_week
+        string day_name
+        uint8 is_weekend
+    }
+    dq_results {
+        datetime run_ts
+        string area
+        string check_name
+        string severity
+        string status
+        float value
+        string rule
     }
 ```
 
