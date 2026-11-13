@@ -1,0 +1,96 @@
+# OpenMetadata поднимается отдельным файлом: стенд тяжёлый, и держать его
+# постоянно рядом с Airflow, ClickHouse и Superset на ноутбуке незачем.
+#
+#   docker compose -f docker-compose.openmetadata.yml up -d     поднять
+#   docker compose -f docker-compose.openmetadata.yml down      погасить
+#
+# Отличия от официального стенда OpenMetadata:
+#   * не поднимается контейнер ingestion — это второй Airflow, а метаданные
+#     и линейка загружаются скриптом tools/openmetadata_lineage.py;
+#   * кучи JVM уменьшены вдвое, у каждого контейнера свой лимит памяти:
+#     весь стенд укладывается в 2.8 ГБ и не может вырасти дальше;
+#   * наружу открыт только интерфейс на 8585, база и поиск доступны
+#     внутри сети стенда.
+
+name: openmetadata
+
+x-om-environment: &om-environment
+  DB_HOST: om-postgres
+  DB_PORT: 5432
+  DB_USER: openmetadata_user
+  DB_USER_PASSWORD: openmetadata_password
+  DB_SCHEME: postgresql
+  DB_DRIVER_CLASS: org.postgresql.Driver
+  OM_DATABASE: openmetadata_db
+  SEARCH_TYPE: elasticsearch
+  ELASTICSEARCH_HOST: om-search
+  ELASTICSEARCH_PORT: 9200
+  ELASTICSEARCH_SCHEME: http
+  # сбор метаданных по расписанию не используется, планировщик стенду не нужен
+  PIPELINE_SERVICE_CLIENT_ENABLED: "false"
+  OPENMETADATA_HEAP_OPTS: -Xmx640m -Xms640m
+
+services:
+  om-postgres:
+    image: docker.getcollate.io/openmetadata/postgresql:1.13.6
+    command: "--work_mem=10MB"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - om-db:/var/lib/postgresql/data
+    mem_limit: 384m
+    healthcheck:
+      test: psql -U postgres -tAc 'select 1' -d openmetadata_db
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+  om-search:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.3.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - om-search:/usr/share/elasticsearch/data
+    # куча 512 МБ, но поиску нужно ещё столько же вне кучи, иначе его убьёт по лимиту
+    mem_limit: 1536m
+    healthcheck:
+      test: "curl -s http://localhost:9200/_cluster/health | grep -qE 'green|yellow' || exit 1"
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+  om-migrate:
+    image: docker.getcollate.io/openmetadata/server:1.13.6
+    command: "./bootstrap/openmetadata-ops.sh migrate"
+    environment:
+      <<: *om-environment
+    mem_limit: 1200m
+    depends_on:
+      om-postgres:
+        condition: service_healthy
+      om-search:
+        condition: service_healthy
+
+  om-server:
+    image: docker.getcollate.io/openmetadata/server:1.13.6
+    environment:
+      <<: *om-environment
+    ports:
+      - "8585:8585"
+    mem_limit: 1200m
+    restart: always
+    depends_on:
+      om-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8586/healthcheck"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+volumes:
+  om-db:
+  om-search:

@@ -43,6 +43,7 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:26.8
+    mem_limit: 1536m
     environment:
       CLICKHOUSE_USER: ods
       CLICKHOUSE_PASSWORD: ods
@@ -73,6 +74,7 @@ services:
 
   superset:
     build: ./superset
+    mem_limit: 1g
     environment:
       SUPERSET_SECRET_KEY: lab-superset-secret
     command: ["bash", "/app/pythonpath/bootstrap.sh"]
