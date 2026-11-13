@@ -58,6 +58,35 @@ services:
       interval: 10s
       retries: 5
 
+  superset-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+      POSTGRES_DB: superset
+    volumes:
+      - superset-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "superset"]
+      interval: 10s
+      retries: 5
+
+  superset:
+    build: ./superset
+    environment:
+      SUPERSET_SECRET_KEY: lab-superset-secret
+    command: ["bash", "/app/pythonpath/bootstrap.sh"]
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./superset:/app/pythonpath
+    restart: always
+    depends_on:
+      superset-db:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+
   airflow-init:
     <<: *airflow-common
     command: version
@@ -98,3 +127,4 @@ services:
 volumes:
   airflow-db:
   clickhouse:
+  superset-db:
