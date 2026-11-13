@@ -7,12 +7,13 @@ from airflow.sdk import dag, task
 
 import datasets
 import dds
+import sql
 
 
 @dag(dag_id="dds_weather", schedule=[datasets.ODS_METAR], start_date=datetime(2026, 9, 27),
      catchup=False, tags=["dds", "weather"])
 def dds_weather():
-    ods_ready = PythonSensor(task_id="ods_ready", python_callable=dds.ods_ready,
+    ods_ready = PythonSensor(task_id="ods_ready", python_callable=sql.has_rows,
                              op_args=["ods_metar"], poke_interval=30, timeout=600,
                              mode="reschedule")
 

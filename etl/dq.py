@@ -8,7 +8,7 @@
 from collections import namedtuple
 from datetime import datetime, timezone
 
-import dds
+from clickhouse import client
 
 Check = namedtuple("Check", "name sql op limit severity")
 
@@ -146,7 +146,7 @@ def evaluate(check, value):
 
 def run(area):
     """Выполняет проверки области, пишет результаты в dds_dq_results, возвращает число провалов."""
-    ch = dds.client()
+    ch = client()
     run_ts = datetime.now(timezone.utc).replace(microsecond=0)
     rows, failed = [], 0
     for check in CHECKS[area]:

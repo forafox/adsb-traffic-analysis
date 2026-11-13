@@ -14,3 +14,5 @@ ODS_METAR = Asset("clickhouse://clickhouse/ods/ods_metar")
 DDS_POSITIONS = Asset("clickhouse://clickhouse/ods/dds_fact_position")
 DDS_FLIGHTS = Asset("clickhouse://clickhouse/ods/dds_fact_flight")
 DDS_WEATHER = Asset("clickhouse://clickhouse/ods/dds_fact_weather")
+
+DM_MARTS = Asset("clickhouse://clickhouse/ods/dm_marts")

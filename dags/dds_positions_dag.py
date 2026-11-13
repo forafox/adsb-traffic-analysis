@@ -7,12 +7,13 @@ from airflow.sdk import dag, task
 
 import datasets
 import dds
+import sql
 
 
 @dag(dag_id="dds_positions", schedule=[datasets.ODS_POSITIONS], start_date=datetime(2026, 9, 27),
      catchup=False, tags=["dds", "adsb"])
 def dds_positions():
-    ods_ready = PythonSensor(task_id="ods_ready", python_callable=dds.ods_ready,
+    ods_ready = PythonSensor(task_id="ods_ready", python_callable=sql.has_rows,
                              op_args=["ods_positions"], poke_interval=30, timeout=600,
                              mode="reschedule")
 
@@ -22,8 +23,7 @@ def dds_positions():
 
     @task
     def dim_aircraft() -> int:
-        dds.run_script("20_dim_aircraft.sql")
-        return dds.count(dds.client(), "dds_dim_aircraft final")
+        return dds.run_script("20_dim_aircraft.sql", "dds_dim_aircraft final")
 
     @task
     def fact_position() -> int:

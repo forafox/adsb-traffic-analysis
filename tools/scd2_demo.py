@@ -16,7 +16,8 @@
 import json
 import sys
 
-import dds
+import sql
+from clickhouse import client
 
 ODS = "scd2_demo_ods"
 DIM = "scd2_demo_dim"
@@ -32,7 +33,7 @@ SNAPSHOTS = [
 
 def dim_ddl():
     """Берём DDL измерения из рабочей схемы, чтобы демонстрация шла на той же структуре."""
-    for statement in dds.statements("00_schema.sql"):
+    for statement in sql.statements("dds", "00_schema.sql"):
         if "dds_dim_aircraft (" in statement:
             return statement.replace("dds_dim_aircraft", DIM)
     raise RuntimeError("в 00_schema.sql не найдено объявление dds_dim_aircraft")
@@ -40,14 +41,14 @@ def dim_ddl():
 
 def scd2_insert():
     """Рабочий SQL построения SCD2 с подменёнными именами таблиц."""
-    for statement in dds.statements("20_dim_aircraft.sql"):
+    for statement in sql.statements("dds", "20_dim_aircraft.sql"):
         if "insert into dds_dim_aircraft\n" in statement + "\n" and "with" in statement:
             return statement.replace("dds_dim_aircraft", DIM).replace("ods_positions", ODS)
     raise RuntimeError("в 20_dim_aircraft.sql не найден insert в dds_dim_aircraft")
 
 
 def main():
-    ch = dds.client()
+    ch = client()
     ch.command(f"drop table if exists {ODS}")
     ch.command(f"drop table if exists {DIM}")
     ch.command(f"create table {ODS} as ods_positions")
