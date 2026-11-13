@@ -30,7 +30,8 @@
 ## Структура репозитория
 
 ```
-docker-compose.yml      Airflow и ClickHouse
+docker-compose.yml      Airflow, ClickHouse и Superset
+docker-compose.openmetadata.yml  каталог и Data Lineage, поднимается отдельно
 
 collectors/             сбор сырых данных из внешних источников
     collect.py          снимки позиций бортов из трёх источников
@@ -40,17 +41,22 @@ collectors/             сбор сырых данных из внешних и�
     summary.py          что уже собрано: таблица по запускам и итоги
 
 dags/                   процессы Airflow, по файлу на DAG: ods_* загрузка сырых данных,
-                        dds_* построение детального слоя и проверка качества
+                        dds_* детальный слой и качество, dm_marts витрины
 etl/                    код, который вызывают DAGи
     ods.py              разбор снимка и загрузка его в сырой слой
-    dds.py              запуск SQL-скриптов слоя DDS
+    dds.py              подготовка схемы DDS и ожидание данных ODS
     dq.py               проверки качества: SQL, пороги и уровни
     datasets.py         assets, по которым DAGи запускают друг друга
+    sql.py              запуск SQL-скриптов слоёв
     clickhouse.py       подключение к базе
-sql/dds/                SQL слоя DDS: схема, измерения, факты
+sql/dds/                SQL детального слоя: схема, измерения, факты
+sql/dm/                 SQL витрин: по скрипту на витрину
+superset/               образ Superset с драйверами и его конфигурация
 
 tools/analysis_charts.py  первичный анализ рейсов: загрузка по часам и задержки
 tools/scd2_demo.py        проверка механизма SCD2 на синтетическом борте
+tools/superset_setup.py   дашборд Superset: источник, наборы данных, графики
+tools/openmetadata_lineage.py  каталог и линейка от файлов до витрин
 
 report/                 графики и скриншоты для отчётов
 data/                   собранные данные, в репозиторий не попадают (см. .gitignore)
@@ -59,21 +65,32 @@ data/                   собранные данные, в репозитори
 ## Быстрый старт
 
 ```bash
-docker compose up -d        # Airflow и ClickHouse
+docker compose up -d        # Airflow, ClickHouse и Superset
 open http://localhost:8080  # интерфейс Airflow, логин airflow / airflow
+open http://localhost:8088  # интерфейс Superset, логин admin / admin
 ```
 
 Дальше достаточно запустить любой DAG слоя ODS, остальное произойдёт само:
 
 ```
-ods_positions ─┐
-ods_board      ├─► [assets] ─► dds_positions, dds_flights, dds_weather ─► dds_quality
-ods_weather    ┘
+ods_positions ─┐                                                   ┌─► dds_quality
+ods_board      ├─► [assets] ─► dds_positions, dds_flights, ... ─► [assets] ─┤
+ods_weather    ┘                                                   └─► dm_marts
 ```
 
 DAGи DDS подписаны на assets слоя ODS и стартуют, когда сырые данные обновились;
-`dds_quality` запускается, когда обновились все три потока DDS.
+`dds_quality` и `dm_marts` запускаются, когда обновились все три потока DDS.
 Разовая загрузка всего, что собрано руками: `airflow dags trigger ods_archive`.
+
+Дашборд собирается скриптом: `python3 tools/superset_setup.py`.
+
+Каталог данных и Data Lineage поднимаются отдельно, только когда нужны:
+
+```bash
+docker compose -f docker-compose.openmetadata.yml up -d
+python3 tools/openmetadata_lineage.py
+open http://localhost:8585            # логин admin@open-metadata.org / admin
+```
 
 Смотреть данные можно во встроенном интерфейсе ClickHouse на `localhost:8123/play`
 или из командной строки: `docker compose exec clickhouse clickhouse-client -u ods --password ods -d ods`.
@@ -170,7 +187,7 @@ data/raw/
 запроса, URL, размер ответа, число бортов и ошибку, если она была.
 
 Табло — исключение: сайт отдаёт не JSON, а HTML-страницу на три мегабайта, поэтому
-`collect_board.py` разбирает карточки рейсов сразу и сохраняет их списком. В каждом рейсе
+`collectors/collect_board.py` разбирает карточки рейсов сразу и сохраняет их списком. В каждом рейсе
 есть номер, авиакомпания, направление, время по расписанию, фактическое время, статус,
 гейт, стойки регистрации и лента выдачи багажа.
 
@@ -192,5 +209,6 @@ data/raw/
 слой DDS в ClickHouse (созвездие фактов, SCD2 для самолётов), DAGи `dds_*` и `dds_quality`,
 SQL в `sql/dds/`. DAGи DDS стартуют сами, когда DAGи ODS обновили свои assets.
 
-**ЛР3. Анализ.** Загрузка аэропорта по часам, длительность захода на посадку, выбор полосы
-в зависимости от ветра, доля малой авиации, сравнение покрытия источников.
+**ЛР3. Витрины, Superset и Data Lineage.** Выполнена, см. [REPORT_LR3.md](REPORT_LR3.md):
+шесть витрин в `sql/dm/`, DAG `dm_marts`, дашборд из девяти визуализаций и граф происхождения
+данных от файлов сборщиков до витрин.

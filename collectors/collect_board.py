@@ -39,6 +39,9 @@ BOARD_URL = ("https://www.airports.co.za/airports/cape-town-international-airpor
 AIRPORT = "Cape Town"
 TIMEOUT = 90
 ATTEMPTS = 3
+# за сутки табло показывает сотни рейсов; пара штук означает, что разбор отвалился,
+# а не что аэропорт пустой — такой снимок сохранять нельзя
+MIN_FLIGHTS = 20
 
 # префикс полей веб-части табло, меняется при переверстке страницы
 FIELD_PREFIX = "ctl00$ctl49$g_3d254c0d_a345_4dc8_b11b_9b55f87a5892$ctl00$"
@@ -138,7 +141,7 @@ def collect(date, dry_run=False):
                 found = parse_flights(result, direction)
                 entry.update(reported=results_count(result), parsed=len(found),
                              bytes=len(result.encode("utf-8")))
-                if found:
+                if len(found) >= MIN_FLIGHTS:
                     flights += found
                     break
             time.sleep(5)
@@ -152,8 +155,10 @@ def collect(date, dry_run=False):
             retry = f" с попытки {entry['attempts']}" if entry["attempts"] > 1 else ""
             print(f"  {direction:11s} {entry['parsed']} рейсов "
                   f"(сайт сообщает {entry['reported']}){retry}")
-            if not entry["parsed"]:
+            if entry["parsed"] < MIN_FLIGHTS:
                 failed += 1
+                print(f"  {direction:11s} разобрано меньше {MIN_FLIGHTS} рейсов, "
+                      f"снимок не сохраняем")
         time.sleep(2)
 
     if not flights and failed:
