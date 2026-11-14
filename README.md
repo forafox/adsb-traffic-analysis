@@ -56,7 +56,7 @@ superset/               образ Superset с драйверами и его к
 tools/analysis_charts.py  первичный анализ рейсов: загрузка по часам и задержки
 tools/scd2_demo.py        проверка механизма SCD2 на синтетическом борте
 tools/superset_setup.py   дашборд Superset: источник, наборы данных, графики
-tools/openmetadata_lineage.py  каталог и линейка от файлов до витрин
+tools/openmetadata_catalog.py  каталог: описания, профили, процессы, линейка
 
 report/                 графики и скриншоты для отчётов
 data/                   собранные данные, в репозиторий не попадают (см. .gitignore)
@@ -88,7 +88,7 @@ DAGи DDS подписаны на assets слоя ODS и стартуют, ко�
 
 ```bash
 docker compose -f docker-compose.openmetadata.yml up -d
-python3 tools/openmetadata_lineage.py
+python3 tools/openmetadata_catalog.py
 open http://localhost:8585            # логин admin@open-metadata.org / admin
 ```
 
